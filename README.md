@@ -1,4 +1,4 @@
-##How to run tests
+## How to run tests
 *[Русский](README.ru.md) перевод.*
 
 The following steps were tested using
