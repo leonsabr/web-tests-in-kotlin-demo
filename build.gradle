@@ -1,0 +1,277 @@
+import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerKillContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
+import com.bmuschko.gradle.docker.tasks.image.DockerRemoveImage
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+
+group "com.leonsabr.demo"
+version "1.0-SNAPSHOT"
+
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath "com.bmuschko:gradle-docker-plugin:3.0.6"
+    }
+}
+
+apply plugin: "java"
+apply plugin: "com.bmuschko.docker-remote-api"
+
+if (file("local.gradle").exists()) {
+    apply from: "local.gradle"
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    agent
+}
+
+ext {
+    if (!project.hasProperty("runId")) runId = System.currentTimeMillis()
+    //selenium stuff
+    if (!project.hasProperty("seleniumHub")) seleniumHub = "http://127.0.0.1:4444/wd/hub"
+    if (!project.hasProperty("browserName")) browserName = "firefox"
+    //images
+    if (!project.hasProperty("teamcityServerImage")) teamcityServerImage = "jetbrains/teamcity-server"
+    if (!project.hasProperty("teamcityServerTag")) teamcityServerTag = "latest"
+    if (!project.hasProperty("teamcityAgentImage")) teamcityAgentImage = "jetbrains/teamcity-agent"
+    if (!project.hasProperty("teamcityAgentTag")) teamcityAgentTag = "latest"
+    //hostname and ports
+    if (!project.hasProperty("hostname")) hostname = InetAddress.localHost.hostName
+    if (!project.hasProperty("teamcityServerPort")) teamcityServerPort = "7777"
+}
+
+dependencies {
+    agent "org.aspectj:aspectjweaver:1.8.10"
+
+    compile "ru.yandex.qatools.allure:allure-junit-adaptor:1.4.23"
+    compile "ru.yandex.qatools.ashot:ashot:1.5.3"
+    compile "ru.yandex.qatools.htmlelements:htmlelements-java:1.17"
+
+    testCompile "junit:junit:4.12"
+}
+
+// ========== TC SERVER DATA =============
+
+task copyTeamCityServerData(type: Copy) {
+    from "$projectDir/data/tc-server/"
+    into "$buildDir/docker/tc-server/"
+}
+
+task dockerfileTeamCityServerData(type: Dockerfile) {
+    dependsOn copyTeamCityServerData
+    def datadir = "/data/teamcity_server/datadir/"
+    from "alpine:3.5"
+    copyFile("datadir", datadir)
+    volume datadir
+    defaultCommand ""
+    destFile = project.file("$buildDir/docker/tc-server/Dockerfile")
+}
+
+task buildTeamCityServerDataImage(type: DockerBuildImage) {
+    dependsOn dockerfileTeamCityServerData
+    inputDir dockerfileTeamCityServerData.destFile.parentFile
+    tag = "tc-server-data:$runId"
+}
+
+task createTeamCityServerDataContainer(type: DockerCreateContainer) {
+    dependsOn buildTeamCityServerDataImage
+    targetImageId { buildTeamCityServerDataImage.getImageId() }
+    containerName "tc-server-data-$runId"
+}
+
+task removeTeamCityServerDataContainer(type: DockerRemoveContainer) {
+    targetContainerId { createTeamCityServerDataContainer.getContainerId() }
+    removeVolumes = true
+    force = true
+}
+
+task removeTeamCityServerDataImage(type: DockerRemoveImage) {
+    dependsOn removeTeamCityServerDataContainer
+    targetImageId { buildTeamCityServerDataImage.getImageId() }
+    force = true
+}
+
+// ========== TC SERVER =============
+
+task pullTeamCityServer(type: DockerPullImage) {
+    repository teamcityServerImage
+    tag teamcityServerTag
+}
+
+task createTeamCityServerContainer(type: DockerCreateContainer) {
+    dependsOn pullTeamCityServer, createTeamCityServerDataContainer
+    targetImageId { pullTeamCityServer.repository + ":" + pullTeamCityServer.tag }
+    portBindings = ["$teamcityServerPort:8111"]
+    volumesFrom createTeamCityServerDataContainer.getContainerName()
+    setEnv "TEAMCITY_SERVER_OPTS=-Dteamcity.startup.maintenance=false"
+    containerName "tc-server-$runId"
+}
+
+task startTeamCityServerContainer(type: DockerStartContainer) {
+    dependsOn createTeamCityServerContainer
+    targetContainerId { createTeamCityServerContainer.getContainerId() }
+}
+
+task killTeamCityServerContainer(type: DockerKillContainer) {
+    targetContainerId { createTeamCityServerContainer.getContainerId() }
+}
+
+task removeTeamCityServerContainer(type: DockerRemoveContainer) {
+    dependsOn killTeamCityServerContainer
+    targetContainerId { killTeamCityServerContainer.getContainerId() }
+    removeVolumes = true
+    force = true
+}
+
+// ========== TC AGENT DATA =============
+
+task copyTeamCityAgentData(type: Copy) {
+    from "$projectDir/data/tc-agent/"
+    into "$buildDir/docker/tc-agent/"
+}
+
+task dockerfileTeamCityAgentData(type: Dockerfile) {
+    dependsOn copyTeamCityAgentData
+    def confdir = "/data/teamcity_agent/conf/"
+    from "alpine:3.5"
+    copyFile("conf", confdir)
+    runCommand "sed -i -e 's@^serverUrl=.*@serverUrl=${"http://$hostname:$teamcityServerPort"}@' ${confdir}buildAgent.properties"
+    volume confdir
+    defaultCommand ""
+    destFile = project.file("$buildDir/docker/tc-agent/Dockerfile")
+}
+
+task buildTeamCityAgentDataImage(type: DockerBuildImage) {
+    dependsOn dockerfileTeamCityAgentData
+    inputDir dockerfileTeamCityAgentData.destFile.parentFile
+    tag = "tc-agent-data:$runId"
+}
+
+task createTeamCityAgentDataContainer(type: DockerCreateContainer) {
+    dependsOn buildTeamCityAgentDataImage
+    targetImageId { buildTeamCityAgentDataImage.getImageId() }
+    containerName "tc-agent-data-$runId"
+}
+
+task removeTeamCityAgentDataContainer(type: DockerRemoveContainer) {
+    targetContainerId { createTeamCityAgentDataContainer.getContainerId() }
+    removeVolumes = true
+    force = true
+}
+
+task removeTeamCityAgentDataImage(type: DockerRemoveImage) {
+    dependsOn removeTeamCityAgentDataContainer
+    targetImageId { buildTeamCityAgentDataImage.getImageId() }
+    force = true
+}
+
+// ========== TC AGENT =============
+
+task pullTeamCityAgent(type: DockerPullImage) {
+    repository teamcityAgentImage
+    tag teamcityAgentTag
+}
+
+task createTeamCityAgentContainer(type: DockerCreateContainer) {
+    dependsOn pullTeamCityAgent, createTeamCityAgentDataContainer
+    targetImageId { pullTeamCityAgent.repository + ":" + pullTeamCityAgent.tag }
+    volumesFrom createTeamCityAgentDataContainer.getContainerName()
+    setEnv "SERVER_URL=http://$hostname:$teamcityServerPort"
+    containerName "tc-agent-$runId"
+}
+
+task startTeamCityAgentContainer(type: DockerStartContainer) {
+    dependsOn createTeamCityAgentContainer
+    targetContainerId { createTeamCityAgentContainer.getContainerId() }
+}
+
+task killTeamCityAgentContainer(type: DockerKillContainer) {
+    targetContainerId { createTeamCityAgentContainer.getContainerId() }
+}
+
+task removeTeamCityAgentContainer(type: DockerRemoveContainer) {
+    dependsOn killTeamCityAgentContainer
+    targetContainerId { killTeamCityAgentContainer.getContainerId() }
+    removeVolumes = true
+    force = true
+}
+
+// ========== REMOVE IMAGES =============
+
+task removeTeamCityServerImage(type: DockerRemoveImage) {
+    targetImageId { teamcityServerImage + ":" + teamcityServerTag }
+    force = true
+}
+
+task removeTeamCityAgentImage(type: DockerRemoveImage) {
+    targetImageId { teamcityAgentImage + ":" + teamcityAgentTag }
+    force = true
+}
+
+task removeImages() {
+    dependsOn removeTeamCityServerImage, removeTeamCityAgentImage
+}
+
+// ========== OTHER =============
+
+task deployTestEnvironment() {
+    dependsOn startTeamCityAgentContainer, startTeamCityServerContainer
+    doLast {
+        def url = "http://$hostname:$teamcityServerPort/login.html"
+        def seconds = 180
+        def start = System.currentTimeMillis()
+        def deadline = start + seconds * 1000
+
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(1000)
+            try {
+                def connection = new URL(url).openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = 3000
+                connection.connect()
+                if (connection.responseCode == 200) {
+                    println("TeamCity started in ${(System.currentTimeMillis() - start) / 1000} seconds.")
+                    return
+                }
+            } catch (IOException ignored) {
+            }
+        }
+        throw new RuntimeException("TeamCity failed to start in $seconds seconds!")
+    }
+}
+
+test {
+    dependsOn deployTestEnvironment
+
+    ignoreFailures = true
+
+    systemProperty("seleniumHub", seleniumHub)
+    systemProperty("browserName", browserName)
+    systemProperty("hostname", hostname)
+    systemProperty("teamcityServerPort", teamcityServerPort)
+
+    doFirst {
+        jvmArgs "-javaagent:${configurations.agent.singleFile}"
+    }
+
+    finalizedBy removeTeamCityServerContainer, removeTeamCityServerDataImage, removeTeamCityAgentContainer, removeTeamCityAgentDataImage
+}
+
+task generateAllureReport(type: Exec) {
+    commandLine "allure", "-v generate build/allure-results -o build/reports/allure"
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "3.5"
+}

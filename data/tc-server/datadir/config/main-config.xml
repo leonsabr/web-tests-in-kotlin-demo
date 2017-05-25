@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server rootURL="http://unit-826.labs.intellij.net:7777" uuid="036411f6-463b-4ad8-9dbc-c80be9fa234d">
+  <version number="787" />
+  <vcs-settings modification-check-interval="60" quiet-period="60" />
+  <comment-transformation>
+    <transformation-pattern search="((https?://|ftp://|file://|mailto:)[\w`~@#$%^&amp;*\-=|\/{}()\[\];:&quot;'?\.]+(?&lt;=[^\.,;&quot;'`\)\]}]))" replace="&lt;a target=&quot;_blank&quot; title=&quot;Click to open this link in a new window&quot; href=&quot;$1&quot;&gt;$1&lt;/a&gt;" description="Links transformation (default)" />
+    <transformation-pattern search="(&#xD;?&#xA;|&#xD;)" replace="&lt;br&gt;" description="Line feed transformation (default)" />
+  </comment-transformation>
+  <connected-servers />
+  <db-compact enabled="true">
+    <scheduler hour="3" minute="0" />
+  </db-compact>
+  <artifacts maxArtifactSize="300000000" artifact-paths="system/artifacts&#xA;" />
+  <build-settings executionTimeout="0" />
+</server>
+
