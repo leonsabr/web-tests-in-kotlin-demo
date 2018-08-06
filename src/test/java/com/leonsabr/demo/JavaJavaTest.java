@@ -37,7 +37,7 @@ public class JavaJavaTest {
                 .runNewBuild()
                 .waitForRunningBuildToFinish()
                 .verifyLatestBuild(expectedBuildNumber, JConstants.BUILD_STATUS,
-                        String.format("%s/viewLog.html?buildId=%d&tab=buildResultsDiv&buildTypeId=%s",
+                        String.format("%s/viewLog.html?buildId=%d&buildTypeId=%s",
                                 JConfig.INSTANCE.getTeamcityBaseURL(), expectedBuildNumber, JConstants.BUILD_CONFIGURATION_ID));
     }
 }

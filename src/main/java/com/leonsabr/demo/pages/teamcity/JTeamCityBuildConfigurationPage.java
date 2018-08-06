@@ -1,12 +1,10 @@
 package com.leonsabr.demo.pages.teamcity;
 
-import com.leonsabr.demo.allure.JAttachments;
 import com.leonsabr.demo.pages.JPage;
 import com.leonsabr.demo.uielements.teamcity.JBuildDescription;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.FindBy;
 import ru.yandex.qatools.allure.annotations.Step;
-import ru.yandex.qatools.htmlelements.annotations.Name;
 import ru.yandex.qatools.htmlelements.element.Button;
 
 import java.util.List;
@@ -30,15 +28,12 @@ public class JTeamCityBuildConfigurationPage extends JPage {
         super(driver);
     }
 
-    @Name("Run build button")
     @FindBy(css = "button[onclick*='runOnAgent']")
     private Button runBuildButton;
 
-    @Name("Builds")
     private List<JBuildDescription> builds;
 
-    @Name("Running build")
-    @FindBy(css = ".running tr")
+    @FindBy(css = "#running [class*='ListItem__list-item']")
     private JBuildDescription runningBuild;
 
     @Override
@@ -52,7 +47,7 @@ public class JTeamCityBuildConfigurationPage extends JPage {
         runBuildButton.click();
         waitForCondition("Failed to wait for a new " + runningBuild + " to appear on the " + this + " page!",
                 runningBuild, exists(), BUILD_TIMEOUT);
-        JAttachments.attachScreenshot(runningBuild);
+        attachScreenshot(runningBuild);
         return this;
     }
 

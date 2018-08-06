@@ -6,22 +6,18 @@ import com.leonsabr.demo.uielements.verifyHref
 import com.leonsabr.demo.uielements.verifyText
 import com.leonsabr.demo.utils.waitForElement
 import org.openqa.selenium.support.FindBy
-import ru.yandex.qatools.htmlelements.annotations.Name
 import ru.yandex.qatools.htmlelements.element.HtmlElement
 import ru.yandex.qatools.htmlelements.element.Link
 
 const val BUILD_NUMBER_PREFIX = "#"
 
-@Name("Build description")
-@FindBy(css = ".historyList tbody tr")
+@FindBy(css = "#shortHistory [class*='ListItem__list-item']")
 class KBuildDescription : HtmlElement() {
 
-    @Name("Build number")
-    @FindBy(css = ".buildNumber")
+    @FindBy(css = "span[title*='Build number']")
     lateinit var buildNumberText: HtmlElement
 
-    @Name("Build results link")
-    @FindBy(css = ".status a.resultsLink")
+    @FindBy(css = "a[class*='BuildStatusLink']")
     lateinit var buildResultsLink: Link
 
     fun verifyBuild(buildNumber: Int, buildStatus: String, buildUrl: String) = apply {

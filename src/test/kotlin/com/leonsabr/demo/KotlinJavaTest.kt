@@ -37,6 +37,6 @@ class KotlinJavaTest {
                 .runNewBuild()
                 .waitForRunningBuildToFinish()
                 .verifyLatestBuild(expectedBuildNumber, BUILD_STATUS,
-                        "${JConfig.INSTANCE.teamcityBaseURL}/viewLog.html?buildId=$expectedBuildNumber&tab=buildResultsDiv&buildTypeId=$BUILD_CONFIGURATION_ID")
+                        "${JConfig.INSTANCE.teamcityBaseURL}/viewLog.html?buildId=$expectedBuildNumber&buildTypeId=$BUILD_CONFIGURATION_ID")
     }
 }

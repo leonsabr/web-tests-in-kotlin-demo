@@ -8,22 +8,18 @@ import com.leonsabr.demo.utils.waitForElement
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.support.FindBy
 import ru.yandex.qatools.allure.annotations.Step
-import ru.yandex.qatools.htmlelements.annotations.Name
 import ru.yandex.qatools.htmlelements.element.Button
 
 class KTeamCityBuildConfigurationPage(driver: WebDriver) : KPage(driver) {
 
     override var url = "/viewType.html?buildTypeId=%s"
 
-    @Name("Run build button")
     @FindBy(css = "button[onclick*='runOnAgent']")
     lateinit var runBuildButton: Button
 
-    @Name("Builds")
     lateinit var builds: List<KBuildDescription>
 
-    @Name("Running build")
-    @FindBy(css = ".running tr")
+    @FindBy(css = "#running [class*='ListItem__list-item']")
     lateinit var runningBuild: KBuildDescription
 
     override fun isLoaded() = builds.isNotEmpty()

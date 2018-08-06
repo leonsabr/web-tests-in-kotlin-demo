@@ -40,7 +40,7 @@ public class JavaKotlinTest {
                 .runNewBuild()
                 .waitForRunningBuildToFinish()
                 .verifyLatestBuild(expectedBuildNumber, BUILD_STATUS,
-                        String.format("%s/viewLog.html?buildId=%d&tab=buildResultsDiv&buildTypeId=%s",
+                        String.format("%s/viewLog.html?buildId=%d&buildTypeId=%s",
                                 KConfig.INSTANCE.getTeamcityBaseURL(), expectedBuildNumber, BUILD_CONFIGURATION_ID));
     }
 }
